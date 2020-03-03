@@ -13,6 +13,8 @@ public:
 
 private:
   GLFWwindow *m_window;
+  VkInstance m_instance;
 
   auto init_window() -> void;
+  auto create_instance() -> void;
 };
