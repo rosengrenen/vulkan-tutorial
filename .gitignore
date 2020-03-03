@@ -1,3 +1,7 @@
+# Created by https://www.gitignore.io/api/cmake,visualstudiocode
+# Edit at https://www.gitignore.io/?templates=cmake,visualstudiocode
+
+### CMake ###
 CMakeLists.txt.user
 CMakeCache.txt
 CMakeFiles
@@ -9,3 +13,22 @@ install_manifest.txt
 compile_commands.json
 CTestTestfile.cmake
 _deps
+
+### CMake Patch ###
+# External projects
+*-prefix/
+
+### VisualStudioCode ###
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+
+### VisualStudioCode Patch ###
+# Ignore all local history of files
+.history
+
+# End of https://www.gitignore.io/api/cmake,visualstudiocode
+
+build
