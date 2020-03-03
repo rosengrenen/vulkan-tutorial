@@ -2,6 +2,7 @@
 
 #include <cstring>
 #include <iostream>
+#include <map>
 #include <stdexcept>
 
 constexpr int WINDOW_WIDTH = 800;
@@ -38,6 +39,7 @@ auto VulkanTutorialApp::init_vulkan() -> void
 {
   create_instance();
   setup_debug_messenger();
+  pick_physical_device();
 }
 
 auto VulkanTutorialApp::main_loop() -> void
@@ -207,6 +209,110 @@ auto VulkanTutorialApp::populate_debug_messenger_create_info(
   create_info.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
   create_info.messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
   create_info.pfnUserCallback = s_debug_callback;
+}
+
+auto VulkanTutorialApp::pick_physical_device() -> void
+{
+  uint32_t device_count = 0;
+  vkEnumeratePhysicalDevices(m_instance, &device_count, nullptr);
+
+  if (device_count == 0)
+  {
+    throw std::runtime_error("Failed to find any GPU with Vulkan support!");
+  }
+
+  std::vector<VkPhysicalDevice> devices(device_count);
+  vkEnumeratePhysicalDevices(m_instance, &device_count, devices.data());
+
+  std::cout << "Available GPUs:\n";
+  for (const auto &device : devices)
+  {
+    VkPhysicalDeviceProperties device_properties;
+    vkGetPhysicalDeviceProperties(device, &device_properties);
+    std::cout << "\t" << device_properties.deviceName << "\n";
+  }
+
+  // Use an ordered map to automatically sort candidates by increasing score
+  std::multimap<int, VkPhysicalDevice> candidates;
+
+  for (const auto &device : devices)
+  {
+    int score = rate_device_suitability(device);
+    candidates.insert(std::make_pair(score, device));
+  }
+
+  // Check if the best candidate is suitable at all
+  if (candidates.rbegin()->first > 0)
+  {
+    m_physical_device = candidates.rbegin()->second;
+  }
+  else
+  {
+    throw std::runtime_error("Failed to find a suitable GPU!");
+  }
+}
+
+auto VulkanTutorialApp::rate_device_suitability(VkPhysicalDevice device) -> int
+{
+  QueueFamilyIndices indices = find_queue_families(device);
+
+  if (!indices.is_complete())
+  {
+    return 0;
+  }
+
+  VkPhysicalDeviceProperties device_properties;
+  VkPhysicalDeviceFeatures device_features;
+  vkGetPhysicalDeviceProperties(device, &device_properties);
+  vkGetPhysicalDeviceFeatures(device, &device_features);
+
+  int score = 0;
+
+  // Discrete GPUs have a significant performance advantage
+  if (device_properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU)
+  {
+    score += 1000;
+  }
+
+  // Maximum possible size of textures affects graphics quality
+  score += device_properties.limits.maxImageDimension2D;
+
+  // Application can't function without geometry shaders
+  if (!device_features.geometryShader)
+  {
+    return 0;
+  }
+
+  return score;
+}
+
+auto VulkanTutorialApp::find_queue_families(VkPhysicalDevice device) -> QueueFamilyIndices
+{
+  QueueFamilyIndices indices;
+
+  uint32_t queue_family_count = 0;
+  vkGetPhysicalDeviceQueueFamilyProperties(device, &queue_family_count, nullptr);
+
+  std::vector<VkQueueFamilyProperties> queue_families(queue_family_count);
+  vkGetPhysicalDeviceQueueFamilyProperties(device, &queue_family_count, queue_families.data());
+
+  int i = 0;
+  for (const auto &queue_family : queue_families)
+  {
+    if (queue_family.queueFlags & VK_QUEUE_GRAPHICS_BIT)
+    {
+      indices.graphics_family = i;
+    }
+
+    if (indices.is_complete())
+    {
+      break;
+    }
+
+    i++;
+  }
+
+  return indices;
 }
 
 auto VulkanTutorialApp::s_debug_callback(

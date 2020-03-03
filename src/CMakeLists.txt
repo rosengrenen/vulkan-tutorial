@@ -4,6 +4,8 @@ add_executable(
 	vulkan-tutorial-app.cpp
 )
 
+set_property(TARGET vulkan-tutorial PROPERTY CXX_STANDARD 17)
+
 target_include_directories(
 	vulkan-tutorial
 	PRIVATE
