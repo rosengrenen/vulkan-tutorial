@@ -1,6 +1,7 @@
 add_executable(
   vulkan-tutorial
 	main.cpp
+	vulkan-tutorial-app.cpp
 )
 
 target_include_directories(
